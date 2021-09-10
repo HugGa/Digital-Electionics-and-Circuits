@@ -143,19 +143,6 @@ namespace Hugh
             }
             return returnval;
         }
-
-        DigETuple<TransistorPhase> currentShortChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double Ecp, double Lp)
-        {
-            return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, 1 / Vap, W / L, Ecp * Lp);
-        }
-        DigETuple<TransistorPhase> currentShortChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double EcpLp)
-        {
-            return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, 1 / Vap, W / L, EcpLp);
-        }
-        DigETuple<TransistorPhase> currentShortChannelModelPMOSNoVan(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double lambdap, double EcpLp)
-        {
-            return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, lambdap, W / L, EcpLp);
-        }
         DigETuple<TransistorPhase> currentSCMPMOSNOVANNOCOX(double Vsg, double Vtp, double Vsd, double kprime, double lambdap, double WL, double ecplp)
         {
             DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
@@ -191,6 +178,18 @@ namespace Hugh
                 return returnval;
             }
             return returnval;
+        }
+        DigETuple<TransistorPhase> currentShortChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double Ecp, double Lp)
+        {
+            return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, 1 / Vap, W / L, Ecp * Lp);
+        }
+        DigETuple<TransistorPhase> currentShortChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double EcpLp)
+        {
+            return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, 1 / Vap, W / L, EcpLp);
+        }
+        DigETuple<TransistorPhase> currentShortChannelModelPMOSNoVan(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double lambdap, double EcpLp)
+        {
+            return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, lambdap, W / L, EcpLp);
         }
         DigETuple<TransistorPhase> currentLongChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap)
         {
