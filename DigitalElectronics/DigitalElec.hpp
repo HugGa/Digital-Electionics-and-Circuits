@@ -359,6 +359,30 @@ namespace Hugh
             }
             return returnval;
         }
+        DigETuple<TransistorPhase> currentSCMPMOSNOVANNOCOX(double Vsg, double Vtp, double Vsd, double kprime, double lambdan, double WL, double ecplp)
+        {
+            DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
+            double Vsgtp = Vsg + Vtp;
+            double VSDsat = (Vsgtp * ecplp) / (Vsgtp + ecplp);
+            double k = WL * kprime;
+            if (Vsg < -Vtp)
+            {
+                return returnval;
+            }
+            if (Vsg > -Vtp && Vsd <= VSDsat)
+            {
+                returnval.state = TransistorPhase::TRIODE;
+                returnval.value = WL * (kprime / (1 + (Vsd / ecplp))) * ((Vsgtp * Vsd) - ((Vsd * Vsd) / 2));
+                return returnval;
+            }
+            if (Vsg > -Vtp && Vsd >= VSDsat)
+            {
+                returnval.state = TransistorPhase::SATURATED;
+                returnval.value = ((k / 2) * ecplp) * ((Vsgtp * Vsgtp) / (Vsgtp + ecplp)) * (1 + lambdan * (Vsd - VSDsat));
+                return returnval;
+            }
+            return returnval;
+        }
         // Gamma = Body effect
         // Phif = some body effect thing
         // Vb = Voltage of Body
