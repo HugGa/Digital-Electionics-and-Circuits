@@ -23,6 +23,14 @@ namespace Hugh
             double value;
             // specialize this per enum for DigETuple, may want to use MagicEnum here
             friend std::ostream &operator<<(std::ostream &os, const DigETuple<T> &tuple);
+            bool operator==(DigETuple<T> b)
+            {
+                if ((this->value + .001) > b.value && (this->value - .001) < b.value)
+                {
+                    return true;
+                }
+                return false;
+            }
         };
         std::ostream &operator<<(std::ostream &os, const DigETuple<TransistorPhase> &tuple)
         {
@@ -48,74 +56,23 @@ namespace Hugh
         // Vto == Vtn or Vtp
         DigETuple<TransistorPhase> currentShortChannelModelNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van, double Ecn, double Ln)
         {
-            DigETuple<TransistorPhase> returnval;
-            double VDSsat = ((Vgs - Vtn) * Ecn * Ln) / ((Vgs - Vtn) + Ecn * Ln);
-            double lambdan = 1 / (Van);
-            if (VDSsat <= 0)
-            {
-                std::cerr << "VDSsat is below 0, erroring, VDSSat: " << VDSsat << std::endl;
-            }
-            if (Vds <= 0)
-            {
-                std::cerr << "VDs is below 0, erroring, Vds: " << Vds << std::endl;
-            }
-            if (lambdan < 0)
-            {
-                std::cerr << "lambdan is below 0, erroring, lambdan:" << lambdan << std::endl;
-            }
-            if (Vgs < Vtn)
-            {
-                returnval.state = TransistorPhase::OFF;
-                returnval.value = 0;
-                return returnval;
-            }
-            if (Vds <= VDSsat)
-            {
-                returnval.state = TransistorPhase::TRIODE;
-                returnval.value = Un * Cox * (W / L) * ((Vgs - Vtn) * Vds - (Vds * Vds) / 2);
-                return returnval;
-            }
-            returnval.state = TransistorPhase::SATURATED;
-            returnval.value = ((Un * Cox) / 2) * (W / L) * ((Vgs * Vtn) * (Vgs * Vtn)) * (1 + lambdan * (Vds - VDSsat));
-            return returnval;
+            return currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, Un * Cox, 1 / Van, W / L, Ecn * Ln);
         }
         DigETuple<TransistorPhase> currentShortChannelModelNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van, double EcnLn)
         {
-            DigETuple<TransistorPhase> returnval;
-            double VDSsat = ((Vgs - Vtn) * EcnLn) / ((Vgs - Vtn) + EcnLn);
-            double lambdan = 1 / (Van);
-            if (VDSsat <= 0)
-            {
-                std::cerr << "VDSsat is below 0, erroring, VDSSat: " << VDSsat << std::endl;
-            }
-            if (Vds <= 0)
-            {
-                std::cerr << "VDs is below 0, erroring, Vds: " << Vds << std::endl;
-            }
-            if (lambdan < 0)
-            {
-                std::cerr << "lambdan is below 0, erroring, lambdan:" << lambdan << std::endl;
-            }
-            if (Vgs < Vtn)
-            {
-                returnval.state = TransistorPhase::OFF;
-                returnval.value = 0;
-                return returnval;
-            }
-            if (Vds <= VDSsat)
-            {
-                returnval.state = TransistorPhase::TRIODE;
-                returnval.value = Un * Cox * (W / L) * ((Vgs - Vtn) * Vds - (Vds * Vds) / 2);
-                return returnval;
-            }
-            returnval.state = TransistorPhase::SATURATED;
-            returnval.value = ((Un * Cox) / 2) * (W / L) * ((Vgs * Vtn) * (Vgs * Vtn)) * (1 + lambdan * (Vds - VDSsat));
-            return returnval;
+            return currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, Un * Cox, 1 / Van, W / L, EcnLn);
         }
         DigETuple<TransistorPhase> currentShortChannelModelNMOSNoVan(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double lambdan, double EcnLn)
         {
-            DigETuple<TransistorPhase> returnval;
-            double VDSsat = ((Vgs - Vtn) * EcnLn) / ((Vgs - Vtn) + EcnLn);
+            return currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, Un * Cox, lambdan, W / L, EcnLn);
+        }
+        // Short Channel Model using Lambdan and kprime and ecnln
+        DigETuple<TransistorPhase> currentSCMNMOSNOVANNOCOX(double Vgs, double Vtn, double Vds, double kprime, double lambdan, double WL, double ecnln)
+        {
+            DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
+            double Vgstn = Vgs - Vtn;
+            double VDSsat = (Vgstn * ecnln) / (Vgstn + ecnln);
+            double k = WL * kprime;
             if (VDSsat <= 0)
             {
                 std::cerr << "VDSsat is below 0, erroring, VDSSat: " << VDSsat << std::endl;
@@ -130,18 +87,20 @@ namespace Hugh
             }
             if (Vgs < Vtn)
             {
-                returnval.state = TransistorPhase::OFF;
-                returnval.value = 0;
                 return returnval;
             }
-            if (Vds <= VDSsat)
+            if (Vgs > Vtn && Vds <= VDSsat)
             {
                 returnval.state = TransistorPhase::TRIODE;
-                returnval.value = Un * Cox * (W / L) * ((Vgs - Vtn) * Vds - (Vds * Vds) / 2);
+                returnval.value = WL * (kprime / (1 + (Vds / ecnln))) * ((Vgstn * Vds) - ((Vds * Vds) / 2));
                 return returnval;
             }
-            returnval.state = TransistorPhase::SATURATED;
-            returnval.value = ((Un * Cox) / 2) * (W / L) * ((Vgs * Vtn) * (Vgs * Vtn)) * (1 + lambdan * (Vds - VDSsat));
+            if (Vgs > Vtn && Vds >= VDSsat)
+            {
+                returnval.state = TransistorPhase::SATURATED;
+                returnval.value = ((k / 2) * ecnln) * ((Vgstn * Vgstn) / (Vgstn + ecnln)) * (1 + lambdan * (Vds - VDSsat));
+                return returnval;
+            }
             return returnval;
         }
         DigETuple<TransistorPhase> currentLongChannelNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van)
@@ -183,31 +142,7 @@ namespace Hugh
             }
             return returnval;
         }
-        // Short Channel Model using Lambdan and kprime and ecnln
-        DigETuple<TransistorPhase> currentSCMNMOSNOVANNOCOX(double Vgs, double Vtn, double Vds, double kprime, double lambdan, double WL, double ecnln)
-        {
-            DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
-            double Vgstn = Vgs - Vtn;
-            double VDSsat = (Vgstn * ecnln) / (Vgstn + ecnln);
-            double k = WL * kprime;
-            if (Vgs < Vtn)
-            {
-                return returnval;
-            }
-            if (Vgs > Vtn && Vds <= VDSsat)
-            {
-                returnval.state = TransistorPhase::TRIODE;
-                returnval.value = WL * (kprime / (1 + (Vds / ecnln))) * ((Vgstn * Vds) - ((Vds * Vds) / 2));
-                return returnval;
-            }
-            if (Vgs > Vtn && Vds >= VDSsat)
-            {
-                returnval.state = TransistorPhase::SATURATED;
-                returnval.value = ((k / 2) * ecnln) * ((Vgstn * Vgstn) / (Vgstn + ecnln)) * (1 + lambdan * (Vds - VDSsat));
-                return returnval;
-            }
-            return returnval;
-        }
+
         DigETuple<TransistorPhase> currentShortChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double Ecp, double Lp)
         {
             DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};

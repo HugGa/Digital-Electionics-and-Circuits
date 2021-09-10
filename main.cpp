@@ -12,6 +12,7 @@ int main()
     // Vsb = Vs - Vb
     // Vb not shown so it's tied to the lowest supply voltage for NMOS, and HIGHEST for PMOS
     // If lambdan is not given, take it as 0
+    // Vb is 0 unless otherwise stated
     double Vg = 1;
     double Vs = 0;
     double Vb = 0;
@@ -23,5 +24,20 @@ int main()
     double Vgs = Vg - Vs;
     double Vtn = Vt + (Vsb == 0 ? 0 : gamma * (sqrt(fabs(2 * Phi) + Vsb) - sqrt(fabs(2 * Phi))));
     double Vds = Vd - Vs;
-    std::cout << currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, 200, 0, 3, .6) << std::endl;
+    DigETuple<TransistorPhase> Thing = currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, 200, 0, 3, .6);
+    Vg = 1;
+    Vs = .24806;
+    Vb = .24806;
+    Vd = 1;
+    gamma = .3;
+    Phi = (.4);
+    Vt = .3;
+    Vsb = Vs - Vb;
+    Vgs = Vg - Vs;
+    Vtn = Vt + (Vsb == 0 ? 0 : gamma * (sqrt(fabs(2 * Phi) + Vsb) - sqrt(fabs(2 * Phi))));
+    Vds = Vd - Vs;
+    DigETuple<TransistorPhase> oThing = currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, 200, 0, 6, .6);
+    std::cout
+        << Thing << std::endl;
+    std::cout << oThing << std::endl;
 }
