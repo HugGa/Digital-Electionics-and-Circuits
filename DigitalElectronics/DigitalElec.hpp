@@ -16,6 +16,15 @@ namespace Hugh
             NMOS,
             PMOS
         };
+        enum class TransistorCalcModel
+        {
+            LONGCHANNEL,
+            SHORTCHANNEL,
+            // THIS IS AN ALIAS FOR THE LONG CHANNEL MODEL
+            LCM = LONGCHANNEL,
+            // THIS IS AN ALIAS FOR THE SHORT CHANNEL MODEL
+            SCM = SHORTCHANNEL
+        };
         template <class T>
         struct DigETuple
         {
@@ -53,7 +62,7 @@ namespace Hugh
             os << " The value of the current is: " << tuple.value << std::endl;
             return os;
         }
-        DigETuple<TransistorPhase> currentSCMNMOSNOVANOCOX(double Vgs, double Vtn, double Vds, double k, double lambdan, double ecnln)
+        DigETuple<TransistorPhase> currentSCMNMOSNOVANNOCOX(double Vgs, double Vtn, double Vds, double k, double lambdan, double ecnln)
         {
             DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
             double Vgstn = Vgs - Vtn;
@@ -94,20 +103,20 @@ namespace Hugh
             return currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, WL * kprime, lambdan, ecnln);
         }
         // Vto == Vtn or Vtp
-        DigETuple<TransistorPhase> currentShortChannelModelNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van, double Ecn, double Ln)
+        DigETuple<TransistorPhase> currentSCMNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van, double Ecn, double Ln)
         {
             return currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, Un * Cox, 1 / Van, W / L, Ecn * Ln);
         }
-        DigETuple<TransistorPhase> currentShortChannelModelNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van, double EcnLn)
+        DigETuple<TransistorPhase> currentSCMNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van, double EcnLn)
         {
             return currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, Un * Cox, 1 / Van, W / L, EcnLn);
         }
-        DigETuple<TransistorPhase> currentShortChannelModelNMOSNoVan(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double lambdan, double EcnLn)
+        DigETuple<TransistorPhase> currentSCMNMOSNoVan(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double lambdan, double EcnLn)
         {
             return currentSCMNMOSNOVANNOCOX(Vgs, Vtn, Vds, Un * Cox, lambdan, W / L, EcnLn);
         }
 
-        DigETuple<TransistorPhase> currentLongChannelNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van)
+        DigETuple<TransistorPhase> currentLCMNMOS(double Vgs, double Vtn, double Cox, double Un, double W, double L, double Vds, double Van)
         {
             DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
             double lambdan = 1 / (Van);
@@ -185,19 +194,19 @@ namespace Hugh
         {
             return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, WL * kprime, lambdap, ecplp);
         }
-        DigETuple<TransistorPhase> currentShortChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double Ecp, double Lp)
+        DigETuple<TransistorPhase> currentSCMPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double Ecp, double Lp)
         {
             return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, 1 / Vap, W / L, Ecp * Lp);
         }
-        DigETuple<TransistorPhase> currentShortChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double EcpLp)
+        DigETuple<TransistorPhase> currentSCMPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap, double EcpLp)
         {
             return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, 1 / Vap, W / L, EcpLp);
         }
-        DigETuple<TransistorPhase> currentShortChannelModelPMOSNoVan(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double lambdap, double EcpLp)
+        DigETuple<TransistorPhase> currentSCMPMOSNoVan(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double lambdap, double EcpLp)
         {
             return currentSCMPMOSNOVANNOCOX(Vsg, Vtp, Vsd, Up * Cox, lambdap, W / L, EcpLp);
         }
-        DigETuple<TransistorPhase> currentLongChannelModelPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap)
+        DigETuple<TransistorPhase> currentLCMPMOS(double Vsg, double Vtp, double Cox, double Up, double W, double L, double Vsd, double Vap)
         {
             DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
             double VSDsat = Vsg + Vtp;
@@ -249,7 +258,7 @@ namespace Hugh
                 double Vgs = Vg - Vs;
                 double Vtn = Vt + (Vsb == 0 ? 0 : gamma * (sqrt(fabs(2 * Phi) + Vsb) - sqrt(fabs(2 * Phi))));
                 double Vds = Vd - Vs;
-                return currentShortChannelModelNMOS(Vgs, Vtn, Cox, Un, W, L, Vds, Va, Ec, Lpn);
+                return currentSCMNMOS(Vgs, Vtn, Cox, Un, W, L, Vds, Va, Ec, Lpn);
             }
             break;
             case ActivationMode::PMOS:
@@ -258,7 +267,35 @@ namespace Hugh
                 double Vsg = Vs - Vg;
                 double Vtp = Vt + (Vbs == 0 ? 0 : -gamma * (sqrt(fabs(2 * Phi) + Vbs) - sqrt(fabs(2 * Phi))));
                 double Vsd = Vd - Vs;
-                return currentShortChannelModelPMOS(Vsg, Vtp, Cox, Un, W, L, Vsd, Va, Ec, Lpn);
+                return currentSCMPMOS(Vsg, Vtp, Cox, Un, W, L, Vsd, Va, Ec, Lpn);
+            }
+            break;
+            default:
+                break;
+            }
+            return returnval;
+        }
+        DigETuple<TransistorPhase> currentLongChannel(ActivationMode mode, double Vg, double Vs, double Vd, double Vb, double gamma, double Phi, double Vt, double Cox, double Un, double W, double L, double Va, double Ec, double Lpn)
+        {
+            DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
+            switch (mode)
+            {
+            case ActivationMode::NMOS:
+            {
+                double Vsb = Vs - Vb;
+                double Vgs = Vg - Vs;
+                double Vtn = Vt + (Vsb == 0 ? 0 : gamma * (sqrt(fabs(2 * Phi) + Vsb) - sqrt(fabs(2 * Phi))));
+                double Vds = Vd - Vs;
+                return currentLCMNMOS(Vgs, Vtn, Cox, Un, W, L, Vds, Va);
+            }
+            break;
+            case ActivationMode::PMOS:
+            {
+                double Vbs = Vb - Vs;
+                double Vsg = Vs - Vg;
+                double Vtp = Vt + (Vbs == 0 ? 0 : -gamma * (sqrt(fabs(2 * Phi) + Vbs) - sqrt(fabs(2 * Phi))));
+                double Vsd = Vd - Vs;
+                return currentLCMPMOS(Vsg, Vtp, Cox, Un, W, L, Vsd, Va);
             }
             break;
             default:
