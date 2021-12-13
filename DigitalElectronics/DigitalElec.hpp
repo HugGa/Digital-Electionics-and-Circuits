@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
+#include <sstream>
 namespace Hugh
 {
     namespace DigitalElectronics
@@ -9,12 +10,20 @@ namespace Hugh
         {
             SATURATED,
             TRIODE,
-            OFF
+            OFF,
+            DONTCARE
         };
         enum class ActivationMode
         {
             NMOS,
-            PMOS
+            PMOS,
+            CMOS
+        };
+        enum class ElectricType
+        {
+            VOLTAGE,
+            CURRENT,
+            TIME
         };
         enum class TransistorCalcModel
         {
@@ -30,6 +39,8 @@ namespace Hugh
         {
             T state;
             double value;
+            ElectricType electricType = ElectricType::CURRENT;
+            std::stringstream string_buffer; // Take a list of the equations we want
             // specialize this per enum for DigETuple, may want to use MagicEnum here
             friend std::ostream &operator<<(std::ostream &os, const DigETuple<T> &tuple);
             bool operator==(DigETuple<T> b)
@@ -40,33 +51,98 @@ namespace Hugh
                 }
                 return false;
             }
+            DigETuple<T> &SetAppend(const DigETuple<T> &other)
+            {
+                if (this == &other)
+                {
+                    return *this;
+                }
+                this->state = other.state;
+                this->value = other.value;
+                this->electricType = other.electricType;
+                this->string_buffer << other.string_buffer.str();
+                return *this;
+            }
         };
         std::ostream &operator<<(std::ostream &os, const DigETuple<TransistorPhase> &tuple)
         {
-            os << "Phase of transistor: ";
-            switch (tuple.state)
+            os << tuple.string_buffer.str() << std::endl;
+            switch (tuple.electricType)
             {
-            case TransistorPhase::SATURATED:
-                os << "SATURATED";
-                break;
-            case TransistorPhase::TRIODE:
-                os << "TRIODE";
-                break;
-            case TransistorPhase::OFF:
-                os << "OFF";
-                break;
+            case ElectricType::CURRENT:
+            {
+                os << "Phase of transistor: ";
+                switch (tuple.state)
+                {
+                case TransistorPhase::SATURATED:
+                    os << "SATURATED";
+                    break;
+                case TransistorPhase::TRIODE:
+                    os << "TRIODE";
+                    break;
+                case TransistorPhase::OFF:
+                    os << "OFF";
+                    break;
+                default:
+                    assert(false);
+                    break;
+                }
+            }
+            break;
+            case ElectricType::VOLTAGE:
+            {
+                os << "Phase of transistor: ";
+                switch (tuple.state)
+                {
+                case TransistorPhase::SATURATED:
+                    os << "SATURATED";
+                    break;
+                case TransistorPhase::TRIODE:
+                    os << "TRIODE";
+                    break;
+                case TransistorPhase::OFF:
+                    os << "OFF";
+                    break;
+                case TransistorPhase::DONTCARE:
+                    os << "DONTCARE";
+                    break;
+                default:
+                    assert(false);
+                    break;
+                }
+            }
+            break;
+            case ElectricType::TIME:
+            {
+            }
             default:
-                assert(false);
                 break;
             }
-            os << " The value of the current is: " << tuple.value << std::endl;
+
+            os << " The value of the ";
+            switch (tuple.electricType)
+            {
+            case ElectricType::TIME:
+                os << "time";
+                break;
+            case ElectricType::VOLTAGE:
+                os << "voltage";
+                break;
+            case ElectricType::CURRENT:
+                os << "current";
+                break;
+            }
+            os << " is: " << tuple.value << std::endl;
             return os;
         }
+
         DigETuple<TransistorPhase> currentSCMNMOSNOVANNOCOX(double Vgs, double Vtn, double Vds, double k, double lambdan, double ecnln)
         {
             DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
             double Vgstn = Vgs - Vtn;
+            returnval.string_buffer << "Vgstn = Vgs - Vtn: " << Vgstn << " = " << Vgs << " - " << Vtn << std::endl;
             double VDSsat = (Vgstn * ecnln) / (Vgstn + ecnln);
+            returnval.string_buffer << "VDSsat = (Vgstn * ecnln) / (Vgstn + ecnln): " << VDSsat << " = (" << Vgstn << " * " << ecnln << ") / (" << Vgstn << " + " << ecnln << ")" << std::endl;
             if (VDSsat <= 0)
             {
                 std::cerr << "VDSsat is below 0, erroring, VDSSat: " << VDSsat << std::endl;
@@ -81,18 +157,27 @@ namespace Hugh
             }
             if (Vgs < Vtn)
             {
+                returnval.string_buffer << "Vgs < Vtn: " << Vgs << " < " << Vtn << std::endl;
                 return returnval;
             }
             if (Vgs > Vtn && Vds <= VDSsat)
             {
                 returnval.state = TransistorPhase::TRIODE;
                 returnval.value = (k / (1 + (Vds / ecnln))) * ((Vgstn * Vds) - ((Vds * Vds) / 2));
+                returnval.string_buffer << "Vgs > Vtn: " << Vgs << " > " << Vtn << std::endl;
+                returnval.string_buffer << "Vds <= VDSSat: " << Vds << " <= " << VDSsat << std::endl;
+                returnval.string_buffer << "Id = (k / (1 + (Vds / ecnln) * ((Vgstn * Vds) - ((Vds * Vds) / 2)): " << std::endl;
+                returnval.string_buffer << returnval.value << " = (" << k << " / (1 + (" << Vds << " / " << ecnln << ") * ((" << Vgstn << " * " << Vds << ") - ((" << Vds << " * " << Vds << " / 2))" << std::endl;
                 return returnval;
             }
             if (Vgs > Vtn && Vds >= VDSsat)
             {
                 returnval.state = TransistorPhase::SATURATED;
                 returnval.value = ((k / 2) * ecnln) * ((Vgstn * Vgstn) / (Vgstn + ecnln)) * (1 + lambdan * (Vds - VDSsat));
+                returnval.string_buffer << "Vgs > Vtn: " << Vgs << " > " << Vtn << std::endl;
+                returnval.string_buffer << "Vds >= VDSSat: " << Vds << " >= " << VDSsat << std::endl;
+                returnval.string_buffer << "Id = ((k / 2) * ecnln) * ((Vgstn * Vgstn) / (Vgstn + ecnln)) * (1 + lambdan * (Vds - VDSsat)): " << std::endl;
+                returnval.string_buffer << returnval.value << " = ((" << k << " / 2) * " << ecnln << " ) * ((" << Vgstn << " * " << Vgstn << ") / (" << Vgstn << " + " << ecnln << ")) * (1 + " << lambdan << " * (" << Vds << " - " << VDSsat << "))" << std::endl;
                 return returnval;
             }
             return returnval;
@@ -121,8 +206,8 @@ namespace Hugh
             DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
             double lambdan = 1 / (Van);
             double VDSsat = Vgs - Vtn;
-            double temp = Un * Cox;
-            double otemp = W / L;
+            double knprime = Un * Cox;
+            double WL = W / L;
             if (VDSsat <= 0)
             {
                 std::cerr << "VDSsat is below 0, erroring, VDSSat: " << VDSsat << std::endl;
@@ -144,13 +229,13 @@ namespace Hugh
             if (Vgs > Vtn && Vds <= VDSsat)
             {
                 returnval.state = TransistorPhase::TRIODE;
-                returnval.value = temp * otemp * (((Vgs - Vtn) * Vds) - ((Vds * Vds) / 2));
+                returnval.value = knprime * WL * (((Vgs - Vtn) * Vds) - ((Vds * Vds) / 2));
                 return returnval;
             }
             if (Vgs > Vtn && Vds >= VDSsat)
             {
                 returnval.state = TransistorPhase::SATURATED;
-                returnval.value = (temp / 2) * otemp * (Vgs - Vtn) * (Vgs - Vtn) * (1 + lambdan * (Vds - VDSsat));
+                returnval.value = (knprime / 2) * WL * (Vgs - Vtn) * (Vgs - Vtn) * (1 + lambdan * (Vds - VDSsat));
                 return returnval;
             }
             return returnval;
@@ -258,7 +343,7 @@ namespace Hugh
                 double Vgs = Vg - Vs;
                 double Vtn = Vt + (Vsb == 0 ? 0 : gamma * (sqrt(fabs(2 * Phi) + Vsb) - sqrt(fabs(2 * Phi))));
                 double Vds = Vd - Vs;
-                return currentSCMNMOS(Vgs, Vtn, Cox, Un, W, L, Vds, Va, Ec, Lpn);
+                returnval.SetAppend(currentSCMNMOS(Vgs, Vtn, Cox, Un, W, L, Vds, Va, Ec, Lpn));
             }
             break;
             case ActivationMode::PMOS:
@@ -267,7 +352,7 @@ namespace Hugh
                 double Vsg = Vs - Vg;
                 double Vtp = Vt + (Vbs == 0 ? 0 : -gamma * (sqrt(fabs(2 * Phi) + Vbs) - sqrt(fabs(2 * Phi))));
                 double Vsd = Vd - Vs;
-                return currentSCMPMOS(Vsg, Vtp, Cox, Un, W, L, Vsd, Va, Ec, Lpn);
+                returnval.SetAppend(currentSCMPMOS(Vsg, Vtp, Cox, Un, W, L, Vsd, Va, Ec, Lpn));
             }
             break;
             default:
@@ -303,6 +388,99 @@ namespace Hugh
             }
             return returnval;
         }
+        DigETuple<TransistorPhase> RTLInverterVihCalc(TransistorCalcModel model, double Vdd, double R, double Kn, double Voul, double ecnln, double Vtn)
+        {
+            DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
+            returnval.electricType = ElectricType::VOLTAGE;
+            returnval.state = TransistorPhase::DONTCARE;
+            // SCM:
+            // (Vdd - Voul) / R =
+            // (Kn / (1 + (Voul / ecnln))) * ((Vih - Vtn) * Voul - (Voul * Voul) / 2);
+            // LCM: Vih = Vtn + sqrt(8 * Vdd / ( 3 * Kn * R)) - (1 / (Kn * R));
+            switch (model)
+            {
+            case TransistorCalcModel::LCM:
+            {
+                returnval.value = Vtn + sqrt(8 * Vdd / (3 * Kn * R)) - (1 / (Kn * R));
+                returnval.string_buffer << "Vih = Vtn + sqrt(8 * Vdd / (3 * Kn * R)) - (1 / (Kn * R)): ";
+                returnval.string_buffer << returnval.value << " = " << Vtn << " + "
+                                        << "sqrt(8 * " << Vdd << " / (3 * " << Kn << " * " << R << ")) - (1 / (" << Kn << " * " << R << "))" << std::endl;
+            }
+            case TransistorCalcModel::SCM:
+            {
+                returnval.value = ((ecnln * Kn * (2 * Vtn + Voul) * Voul) + 2 * (ecnln + Voul) * (Vdd - Voul)) / (2 * ecnln * Kn * Voul * R);
+                returnval.string_buffer << "Vih = ((ecnln * Kn * (2 * Vtn + Voul) * Voul) + 2 * (ecnln + Voul) * (Vdd - Voul)) / (2 * ecnln * Kn * Voul * R)" << std::endl;
+                returnval.string_buffer << returnval.value << " = "
+                                        << "((" << ecnln << " * " << Kn << " * ("
+                                        << "2 * " << Vtn << " + " << Voul << ") * " << Voul << ") + 2 * (" << ecnln << " + " << Voul << ") * (" << Vdd << " - " << Voul << ")) / (2 * " << ecnln << " * " << Kn << " * " << Voul << " * " << R << ")" << std::endl;
+            }
+            }
+            return returnval;
+        }
+        // For this, Vout = Voul
+        DigETuple<TransistorPhase> CMOSInverterVihCalc(double Vdd, double Kn, double Kp, double Vin, double Vtn, double Vtp, double Vout)
+        {
+            DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
+            returnval.electricType = ElectricType::VOLTAGE;
+            returnval.state = TransistorPhase::DONTCARE;
+            // Kn = j
+            // Kp = k
+            // Vdd = d
+            // Vin = i
+            // Vtn = n
+            // Vtp = p
+            // Vout = o
+            double Kr = Kn / Kp;
+            returnval.value = (Vdd + Vtp + Kr * (2 * Vout + Vtn)) / (1 + Kr);
+            return returnval;
+        }
+        // For this Vout = Vouh
+        DigETuple<TransistorPhase> CMOSInverterVilCalc(double Vdd, double Kn, double Kp, double Vin, double Vtn, double Vtp, double Vout)
+        {
+            DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
+            returnval.electricType = ElectricType::VOLTAGE;
+            returnval.state = TransistorPhase::DONTCARE;
+            double Kr = Kn / Kp;
+            returnval.value = (2 * Vout + Vtp - Vdd + Kr * Vtn) / (1 + Kr);
+            return returnval;
+        }
+        DigETuple<TransistorPhase> CMOSInverterVthCalc(double Vtn, double Kr, double Vdd, double Vtp)
+        {
+            DigETuple<TransistorPhase> returnval = {TransistorPhase::OFF, 0};
+            returnval.electricType = ElectricType::VOLTAGE;
+            returnval.state = TransistorPhase::DONTCARE;
+            returnval.value = (Vtn + sqrt(1 / Kr) * (Vdd + Vtp)) / (1 + sqrt(1 / Kr));
+            return returnval;
+        }
+        DigETuple<TransistorPhase> CMOSInverterDeltaTDownSat(DigETuple<TransistorPhase> current_input, double V1, double V2, double Cload)
+        {
+            DigETuple<TransistorPhase> return_val = {TransistorPhase::OFF, 0};
+            double Id = current_input.value;
+            double Vab = V1 - V2;
+            return_val.value = (Cload / Id) * Vab;
+            return_val.electricType = ElectricType::TIME;
+            return_val.state = TransistorPhase::SATURATED;
+            current_input.SetAppend(return_val);
+            return current_input;
+        }
+        // Vtn here is the actual default val
+        DigETuple<TransistorPhase> CMOSInverterDeltaTDownTri(double Vss, double Vgs, double Vtn, double Vc, double Vd, double EcnLn, double Kn, double Cload)
+        {
+            DigETuple<TransistorPhase> return_val = {TransistorPhase::OFF, 0};
+            double inverted = 1 / (Vgs - Vtn);
+            double ln1Stage1 = (2 * (Vgs - Vtn) - (Vd - (-Vss))) / (2 * (Vgs - Vtn) - (Vc - (-Vss)));
+            double ln1Stage2 = (Vc - (-Vss)) / (Vd - (-Vss));
+            double ln1 = std::log(ln1Stage1 * ln1Stage2);
+            double ln2 = std::log((2 * (Vgs - Vtn) - (Vd - (-Vss))) / (2 * (Vgs - Vtn) - (Vc - (-Vss))));
+            double total = inverted * ln1;
+            if (!std::isinf(Ecnln))
+            {
+                total *= (2 / EcnLn) * ln2;
+            }
+            return_val.value = total * (Cload / Kn);
+            return_val.electricType = ElectricType::TIME;
+            return_val.state = TransistorPhase::TRIODE;
+            return return_val;
+        }
     }
-
 }

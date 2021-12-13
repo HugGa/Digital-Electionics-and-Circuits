@@ -80,6 +80,14 @@ namespace Hugh
         {
             return d * 1e-12;
         }
+        constexpr double toFemto(double d)
+        {
+            return d * 1e+15;
+        }
+        constexpr double fromFemto(double d)
+        {
+            return d * 1e-15;
+        }
 #pragma endregion
     }
 }
